@@ -1,0 +1,17 @@
+core/node_modules/
+
+# Optional npm cache
+.npm
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Output
+dist/
+build/
+
+# Env
+.env
+.env.local
