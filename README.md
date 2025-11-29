@@ -1,7 +1,7 @@
 # anki_chan
 ---
 
-## ✨ Project Overview (English README Snippet)
+## ✨ Project Overview 
 
 **Anki-chan** is an AI-powered extension designed to enhance the traditional spaced-repetition workflow of Anki.
 It builds on **AnkiConnect** and provides a richer, more interactive study experience through dynamic questioning, feedback, and card creation.
@@ -21,4 +21,3 @@ This transforms the review process into an active dialogue that strengthens memo
 Anki-chan aims to be a lightweight, privacy-friendly, and highly customizable companion that works entirely on the user’s local machine.
 
 
-随时继续扩展。
