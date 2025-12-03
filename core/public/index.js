@@ -11,9 +11,8 @@ async function loadNextCard() {
     const res = await fetch("/next-card");
     const card = await res.json();
     renderCard(card);
-    console.log(card);
 }
-function renderCard(card) {
+async function renderCard(card) {
     const $card = document.getElementById("card");
 
     if (card.done) {
@@ -23,10 +22,23 @@ function renderCard(card) {
     else {
         document.querySelector(".card-front").innerHTML = card.front;
         document.querySelector(".card-back").innerHTML = card.back;
+        const aiQuestion = await askAI(card.front);
+        document.getElementById("ai-question").innerText = aiQuestion;
     }
 
 }
+async function askAI(front) {
+    console.log("Asking AI for question...");
+  const res = await fetch("/ai-question", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ front })
+  });
 
+  const data = await res.json();
+  console.log("AI Question:", data.question);
+  return data.question;
+}
 async function sendReview(action) {
     if (!currentCard) return;
 
