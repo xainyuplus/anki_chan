@@ -1,0 +1,77 @@
+/*交互窗口*/
+#app {
+
+    background-color: beige;
+    height: 95vh;
+    padding: 10px;
+
+
+}
+#app h1 {
+    text-align: center;
+    margin-top: 20px;
+    font-family: 'Arial', sans-serif;
+    color: #333;
+}
+
+#card-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 80%;
+}
+
+/*卡片外观*/
+#card {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 400px;
+    height: 500px;
+    /* 固定宽 */
+
+}
+
+/*按钮样式*/
+#buttons{
+    justify-content: center;
+    text-align: center;
+
+
+}
+button {
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    margin: 5px;
+    width: 100px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button[data-action="again"] {
+    background-color: #fca5a5;
+    /* 浅红 */
+    color: white;
+}
+
+button[data-action="hard"] {
+    background-color: #fbbf24;
+    /* 浅黄 */
+    color: white;
+}
+
+button[data-action="good"] {
+    background-color: #34d399;
+    /* 浅绿 */
+    color: white;
+}
+
+button[data-action="easy"] {
+    background-color: #60a5fa;
+    /* 浅蓝 */
+    color: white;
+}

@@ -32,7 +32,7 @@ async function invoke(action, params = {}) {
 
 // 查询 due 卡片 + 对应 note 信息
 async function getDueCards() {
-  const cardIds = await invoke("findCards", { query: "deck:cs is:due" });
+  const cardIds = await invoke("findCards", { query: "deck:日语 is:due" });
   if (!cardIds.length) return [];
 
   const noteIds = await invoke("cardsToNotes", { cards: cardIds });
