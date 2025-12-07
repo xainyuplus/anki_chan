@@ -41,8 +41,14 @@ async function getDueCards() {
 
   return notes;
 }
+export async function getDecks() {
+  const decks = await invoke("deckNames");
+  return decks;
+}
+export async function findCards(query) {
+    return await invoke("findCards", { query });
+}
 
-module.exports = {
-  invoke,
-  getDueCards,
-};
+export async function cardsInfo(cardIds) {
+    return await invoke("cardsInfo", { cards: cardIds });
+}

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>anki_chan</title>
+  <link rel="stylesheet" href="main.css">
+</head>
+<body>
+
+  <div id="topBar">
+    <div id="topBarLeft">
+      <input type="text" id="searchInput" placeholder="Search (Anki query syntax)">
+      <button id="searchButton">Search</button>
+    </div>
+    <div id="topBarRight">
+      <button id="settingsButton">Settings</button>
+    </div>
+  </div>
+
+  <div id="main">
+
+    <div id="sidebar">
+      <div id="sidebarTabs">
+        <button id="tabDecks" class="active">Decks</button>
+        <button id="tabQueue">Study Queue</button>
+      </div>
+
+      <div id="sidebarDecks">
+        <ul id="deckTree"></ul>
+      </div>
+
+      <div id="sidebarQueue">
+        <div id="queueList"></div>
+        <div id="queueSummary">Total: 0 cards</div>
+      </div>
+    </div>
+
+    <div id="mainView">
+
+      <div id="viewCardList">
+        <h2>Cards</h2>
+        <div class="btn-group">
+          <button id="btnAddSelectedToQueue">Add selected to Study Queue</button>
+          <button id="btnAddAllDueToQueue">Add all due cards to Study Queue</button>
+        </div>
+        <table id="cardTable">
+          <thead>
+            <tr>
+              <th style="width: 60px;">Select</th>
+              <th>Front</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div id="viewStudy">
+        <h2>Study</h2>
+
+        <div>
+          <strong>Front:</strong>
+          <div id="studyFront"></div>
+        </div>
+
+        <div>
+          <strong>AI Question:</strong>
+          <div id="studyQuestion"></div>
+        </div>
+
+        <div>
+          <strong>Your Answer:</strong><br>
+          <textarea id="studyAnswer" rows="6"></textarea>
+        </div>
+
+        <div>
+          <strong>AI Feedback:</strong>
+          <div id="studyFeedback"></div>
+        </div>
+
+        <div class="btn-group">
+          <button id="btnGetFeedback">Show Answer / Get Feedback</button>
+          <button id="btnNextCard">Next Card</button>
+        </div>
+      </div>
+
+      <div id="viewSettings">
+        <h2>Settings</h2>
+
+        <div>
+          <label for="apiKeyEnvName">API Key Environment Variable Name:</label><br>
+          <input type="text" id="apiKeyEnvNameInput" placeholder="e.g. DEEPSEEK_API_KEY">
+        </div>
+        <div>
+          <label for="aiUrlInput">AI URL:</label><br>
+          <input type="text" id="aiUrlInput" placeholder="e.g. https://api.deepseek.ai/v1/chat/completions">
+        </div>
+
+        <div>
+          <label for="modelNameInput">Model name:</label><br>
+          <input type="text" id="modelNameInput" placeholder="e.g. deepseek-chat">
+        </div>
+
+        <div>
+          <label for="temperatureInput">Temperature:</label><br>
+          <input type="number" id="temperatureInput" step="0.1" min="0" max="2" value="0.7">
+        </div>
+
+        <div>
+          <button id="btnSaveSettings">Save Settings</button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="main.js"></script>
+
+</body>
+</html>

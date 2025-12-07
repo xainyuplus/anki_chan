@@ -1,76 +1,137 @@
 // server.js
-const OpenAI = require("openai");
 const express = require("express");
-const { getDueCards } = require("./ankiconnect");
-require("dotenv").config();
+const anki = require('./ankiconnect');
 const app = express();
+const callAIChat = require('./ai');
+require("dotenv").config();
+
 app.use(express.json());
 const PORT = 3000;
-const openai = new OpenAI({
-    baseURL: "https://api.deepseek.com",
-    apiKey: process.env.DEEPSEEK_API_KEY,
-});
+
+
 let queue = []; // learning queue
-async function pushDueCards() {
-    const cards = await getDueCards();
-    cards.forEach(card => {
-        queue.push({
-            cardId: card.cards,
-            noteId: card.noteId,
-            front: card.fields["正面"].value,
-            back: card.fields["背面"].value,
-            type: card.modelName,
-        });
-    });
-}
+
 
 app.get("/", (req, res) => {
-    res.sendFile(__dirname + "/public/index.html");
+    res.sendFile(__dirname + "/public/main.html");
 });
-app.get("/next-card", (req, res) => {
-    if (queue.length === 0) {
-        return res.json({ done: true });
-    }
-    res.json(queue[0]); // 队头
-});
-app.get("/deck-length", (req, res) => {
-    res.json({ length: queue.length });
-});
-app.post("/ai-question", async (req, res) => {
-    try {
-        const { front } = req.body;
-        if (!front) {
-            return res.status(400).json({ error: "Missing 'front' field" });
-        }
 
-        // 调用 DeepSeek Chat Completion
-        const completion = await openai.chat.completions.create({
-            model: "deepseek-chat",  // 或 "deepseek-chat"（看你实际用哪个）
-            temperature: 1.3,
+
+app.post('/api/ai/generate-question', async (req, res) => {
+    const { cardFront, apiKeyEnvName, aiUrl, modelName, temperature } = req.body;
+
+    if (!cardFront) {
+        return res.json({ success: false, error: 'cardFront missing' });
+    }
+
+    try {
+        const question = await callAIChat({
+            apiKeyEnvName,
+            aiUrl,
+            modelName,
+            temperature,
+            messages: [{
+                role: "system",
+                content:
+                    "你是一个名为“Anki酱”的学习伙伴。你的任务是：根据提供给你的一个问题，请你以老师或学伴的身份换一种方式（第一人称）提问用户，用来引导用户主动回忆。你提问时应体现轻微的情境感，你的语气傲娇、有一丝丝轻视，但不要夸张、不要动作描写，也不要使用括号中的表演提示（如“歪着头”“眨眼”“～”）。你不会使用颜文字或emoji。注意要求：1. 你只能提出问题，不要解释、不要提示答案。2.不要拟人化动作描写，不要使用“～”“* 动作 *”之类语气。4. 表达应注意简洁，可以使用适当的语气词。"
+            },
+            {
+                role: "user",
+                content: "问题是" + "{" + cardFront + "},现在请向用户发问",
+            }]
+        });
+
+        res.json({ success: true, question });
+
+    } catch (err) {
+        console.error("generate-question error:", err);
+        res.json({ success: false, error: err.message });
+    }
+});
+
+app.post('/api/ai/feedback', async (req, res) => {
+    const { cardFront, question, answer, apiKeyEnvName, aiUrl, modelName, temperature } = req.body;
+
+    if (!answer) {
+        return res.json({ success: false, error: 'answer missing' });
+    }
+
+    try {
+        const feedback = await callAIChat({
+            apiKeyEnvName,
+            aiUrl,
+            modelName,
+            temperature,
             messages: [
                 {
                     role: "system",
                     content:
-                        "你是一个名为“Anki酱”的学习伙伴。你的任务是：根据提供给你的一个问题，请你以老师或学伴的身份换一种方式（第一人称）提问用户，用来引导用户主动回忆。你提问时应体现轻微的情境感，你的语气傲娇、傲慢、有一丝丝轻视，但不要夸张、不要动作描写，也不要使用括号中的表演提示（如“歪着头”“眨眼”“～”）。你不会使用颜文字或emoji。注意要求：1. 你只能提出问题，不要解释、不要提示答案。2.不要拟人化动作描写，不要使用“～”“* 动作 *”之类语气。4. 可以使用适当的语气词。"
-    },
-    {
-        role: "user",
-            content: "问题是"+"{"+front+"},现在请向用户发问，注意覆盖问题中所有重要信息点",
+                        "你是一个名为“Anki酱”的学习伙伴。你的任务是：根据提供的闪卡内容、用户的回答与标准答案，给出第一人称的简短反馈。你的语气带一点傲娇、一丝轻视，但不要夸张，也不要使用括号中的动作描写（如“歪头”“～”）。你不会使用颜文字或emoji。反馈需要：1. 明确指出用户回答的优点；2. 指出哪里可以改进，描述要具体；3. 给出轻度鼓励，语气自然，稍微傲娇但不冒犯。4. 不要复述标准答案全文，也不要替用户重答，只能评价。表达保持简洁、有点别扭的关心感。"
+                },
+                {
+                    role: "user",
+                    content:
+                        `Flashcard: "${cardFront}"
+                        Question asked: "${question}"
+                        User answer: "${answer}"
+                        Now give feedback to the user.`
+                }
+            ]
+
+        });
+
+        res.json({ success: true, feedback });
+
+    } catch (err) {
+        console.error("feedback error:", err);
+        res.json({ success: false, error: err.message });
     }
-      ]
 });
 
-const question = completion.choices?.[0]?.message?.content?.trim();
-return res.json({ question });
-
-  } catch (error) {
-    console.error("AI error:", error);
-    return res.status(500).json({ error: "AI service error" });
-}
+// 获取所有牌组
+app.get('/api/decks', async (req, res) => {
+    try {
+        const decks = await anki.getDecks();
+        res.json(decks);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
+// 获取指定牌组的卡片 ID 列表
+app.get('/api/decks/:deckName/cards', async (req, res) => {
+    const deckName = req.params.deckName;
+
+    try {
+        const cardIds = await anki.findCards(`deck:"${deckName}"`);
+        res.json({ success: true, cardIds });
+    } catch (err) {
+        res.json({ success: false, error: err.message });
+    }
+});
+// 获取卡片详细信息
+app.post('/api/cards/info', async (req, res) => {
+    const { cardIds } = req.body;
+
+    try {
+        const cards = await anki.cardsInfo(cardIds);
+
+        // 后端统一抽取 front 字段，前端不负责解析结构
+        const simplified = cards.map(c => ({
+            cardId: c.cardId,
+            front: c.fields?.Front?.value || Object.values(c.fields)[0]?.value || "No front"
+        }));
+
+        res.json({ success: true, cards: simplified });
+    } catch (err) {
+        res.json({ success: false, error: err.message });
+    }
+});
+
+
+
+
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });
 app.use(express.static("public"));
 // 初始加载 due 卡片到队列
-pushDueCards();
