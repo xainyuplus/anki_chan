@@ -24,7 +24,7 @@ app.post('/api/ai/generate-question', async (req, res) => {
         return res.json({ success: false, error: 'cardFront missing' });
     }
 
-    try {
+    try { 
         const question = await callAIChat({
             apiKeyEnvName,
             aiUrl,

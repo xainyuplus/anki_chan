@@ -118,7 +118,9 @@ function renderTreeNode(tree, container) {
     Object.keys(tree).forEach(name => {
         const info = tree[name];
         const li = document.createElement("li");
-        li.textContent = name;
+        const span = document.createElement("span");
+        span.textContent = name;
+        li.appendChild(span);
         li.dataset.deckName = info.__fullName;
 
         li.addEventListener("click", e => {
@@ -128,9 +130,22 @@ function renderTreeNode(tree, container) {
 
         const children = info.__children;
         if (Object.keys(children).length > 0) {
+            const toggle = document.createElement("span");
+            toggle.className = "toggle-arrow";
+            toggle.textContent = "►"; // 初始为折叠状态
+            li.insertBefore(toggle, span); // 放在节点名前面
+
             const ul = document.createElement("ul");
             renderTreeNode(children, ul);
             li.appendChild(ul);
+            ul.style.display = "none";
+             toggle.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const isCollapsed = ul.style.display === "none";
+                ul.style.display = isCollapsed ? "block" : "none";
+                toggle.textContent = isCollapsed ? "▼" : "►";
+            });
+
         }
 
         container.appendChild(li);
