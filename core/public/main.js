@@ -158,24 +158,14 @@ async function loadDeckCards(deckName) {
     AppState.currentDeck = deckName;
     AppState.currentQuery = `deck:"${deckName}"`;
 
-    try {
-        const response = await fetch(`/api/decks/${encodeURIComponent(deckName)}/cards`);
-        const data = await response.json();
-
-        if (!data.success) {
-            throw new Error(data.error || "Unknown error");
-        }
-
-        await loadCardInfo(data.cardIds);
-    } catch (error) {
-        console.error('Failed to load deck cards:', error);
-
-        // 提供 fallback 示例
-        renderCardList([
-            { id: 1, front: 'What is MIS in digital circuits?' },
-            { id: 2, front: 'Define flip-flop' }
-        ]);
+    const query_result = await apiFindCards(AppState.currentQuery);
+    if (!query_result.success) {
+        alert("Error loading deck cards: " + query_result.error);
+        return;
     }
+    const cardIds = query_result.result;
+    await loadCardInfo(cardIds);
+
 }
 
 // 根据 cardIds 获取卡片字段
@@ -229,37 +219,41 @@ function stripHtml(html) {
     return tmp.textContent || tmp.innerText || '';
 }
 
-// 搜索功能(待迁移)
+// 搜索功能
 async function performSearch() {
-    const query = document.getElementById('searchInput').value.trim();
+    const query = getSearchQuery();
     if (!query) {
-        alert('Please enter a search query');
+        alert("Please enter a search query");
         return;
     }
 
-    AppState.currentQuery = query;
-    AppState.currentDeck = null;
-
-    try {
-        const response = await fetch('http://localhost:8765', {
-            method: 'POST',
-            body: JSON.stringify({
-                action: 'findCards',
-                version: 6,
-                params: { query }
-            })
-        });
-        const data = await response.json();
-
-        if (data.error) {
-            alert('Search error: ' + data.error);
+    updateSearchState(query);
+        const  query_result = await apiFindCards(query);
+        if (!query_result.success) {
+            alert("Search error: " + query_result.error);
             return;
         }
+        const cardIds = query_result.result;
+        await loadCardInfo(cardIds);
+}
+//虽然暂时没什么用，但为将来扩展做准备
+function getSearchQuery() {
+    return document.getElementById('searchInput').value.trim();
+}
+function updateSearchState(query) {
+    AppState.currentQuery = query;
+    AppState.currentDeck = null; // 切换到搜索模式
+}
 
-        await loadCardInfo(data.result);
-    } catch (error) {
-        console.error('Search failed:', error);
-    }
+//通用搜索接口
+async function apiFindCards(query) {
+    const response = await fetch('/api/cards/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+    });
+    const data = await response.json();
+    return data;
 }
 
 // 队列管理

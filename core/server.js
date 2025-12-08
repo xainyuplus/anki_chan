@@ -97,17 +97,18 @@ app.get('/api/decks', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-// 获取指定牌组的卡片 ID 列表
-app.get('/api/decks/:deckName/cards', async (req, res) => {
-    const deckName = req.params.deckName;
+// 搜索指定卡片 ID 列表
 
-    try {
-        const cardIds = await anki.findCards(`deck:"${deckName}"`);
-        res.json({ success: true, cardIds });
+app.post("/api/cards/search", async (req, res) => {
+    const { query } = req.body;
+   try {
+        const cardIds = await anki.findCards(query);
+        res.json({ success: true, result: cardIds });
     } catch (err) {
         res.json({ success: false, error: err.message });
     }
 });
+
 // 获取卡片详细信息
 app.post('/api/cards/info', async (req, res) => {
     const { cardIds } = req.body;

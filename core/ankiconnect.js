@@ -30,17 +30,6 @@ async function invoke(action, params = {}) {
   return data.result;
 }
 
-// 查询 due 卡片 + 对应 note 信息
-async function getDueCards() {
-  const cardIds = await invoke("findCards", { query: "deck:大学物理 is:due" });
-  if (!cardIds.length) return [];
-
-  const noteIds = await invoke("cardsToNotes", { cards: cardIds });
-  const uniqueNotes = [...new Set(noteIds)];
-  const notes = await invoke("notesInfo", { notes: uniqueNotes });
-
-  return notes;
-}
 export async function getDecks() {
   const decks = await invoke("deckNames");
   return decks;
