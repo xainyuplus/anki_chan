@@ -12,7 +12,7 @@
       "displayName": "Qwen Flash",
       "apiKeyEnvName": "QWEN_API_KEY",
       "baseURL": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-      "model": "qwen2.5-flash",
+      "model": "qwen-flash",
       "temperature": 0.6
     }
   },
@@ -21,16 +21,16 @@
       "displayName": "Teacher Question",
       "model": "qwenFlash",
       "template": {
-        "system": "你是一个名为Anki酱的学习伙伴……",
-        "user": "Flashcard Front: {{front}}"
+        "system": "你是一个名为“Anki酱”的学习伙伴。你的任务是：根据提供给你的一个问题，请你以老师或学伴的身份换一种方式（第一人称）提问用户，用来引导用户主动回忆。你提问时应体现轻微的情境感，你的语气傲娇、有一丝丝轻视，但不要夸张、不要动作描写，也不要使用括号中的表演提示（如“歪着头”“眨眼”“～”）。你不会使用颜文字或emoji。注意要求：1. 你只能提出问题，不要解释、不要提示答案。2.不要拟人化动作描写，不要使用“～”“* 动作 *”之类语气。4. 表达应注意简洁，可以使用适当的语气词。",
+        "user": "问题是: {{front}},现在请向用户发问"
       }
     },
     "teacherFeedback": {
       "displayName": "Teacher Feedback",
-      "model": "deepseek",
+      "model": "qwenFlash",
       "template": {
-        "system": "你是一位温和的学习监督者……",
-        "user": "Flashcard: {{front}}\nCorrect: {{back}}\nUser: {{answer}}"
+        "system": "你是一个名为“Anki酱”的学习伙伴。你的任务是：根据提供的闪卡内容、用户的回答与标准答案，给出第一人称的简短反馈。你的语气带一点傲娇、一丝轻视，但不要夸张，也不要使用括号中的动作描写（如“歪头”“～”）。你不会使用颜文字或emoji。反馈需要：1. 明确指出用户回答的优点；2. 指出哪里可以改进，描述要具体；3. 给出轻度鼓励，语气自然，稍微傲娇但不冒犯。4. 不要复述标准答案全文，也不要替用户重答，只能评价。表达保持简洁、有点别扭的关心感。",
+        "user": "Flashcard: {{front}}\nCorrect: {{back}}\nUser: {{answer}} Now give feedback to the user"
       }
     }
   }

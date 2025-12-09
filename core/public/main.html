@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <title>anki_chan</title>
   <link rel="stylesheet" href="main.css">
+  <link rel="stylesheet" href="css/settingPanel.css">
 </head>
 
 <body>
@@ -86,11 +87,11 @@
       </div>
 
       <div id="viewSettings">
-        <h2>Settings</h2>
         <h2>AI Settings</h2>
 
         <h3>Models</h3>
         <button id="addModelBtn" type="button">Add Model</button>
+        <div class="settings-table-wrapper">
         <table id="modelsTable">
           <thead>
             <tr>
@@ -107,9 +108,10 @@
             <!-- JS 渲染 -->
           </tbody>
         </table>
-
+        </div>
         <h3>Roles</h3>
         <button id="addRoleBtn" type="button">Add Role</button>
+        <div class="settings-table-wrapper">
         <table id="rolesTable">
           <thead>
             <tr>
@@ -125,7 +127,7 @@
             <!-- JS 渲染 -->
           </tbody>
         </table>
-
+        </div>
         <button id="saveSettingsBtn" type="button">Save Settings</button>
 
 

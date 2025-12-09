@@ -1,0 +1,164 @@
+/* ================================
+   SETTINGS PAGE REFINEMENT
+   Only affects #viewSettings
+   ================================ */
+
+/* 包裹整个 Settings 的滚动区域 */
+#viewSettings {
+    max-width: 100%;
+}
+
+/* -------------------------------
+   1. Settings 表格滚动支持
+--------------------------------*/
+#viewSettings .settings-table-wrapper {
+    overflow-x: auto;
+    margin-top: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    
+}
+
+/* 让 table 不压缩内容，支持横向滚动 */
+#viewSettings table {
+    width: max-content;   /* 关键 */
+    min-width: 100%;
+    border-collapse: collapse;
+}
+
+/* 表头固定淡灰 */
+#viewSettings th {
+    background-color: #f0f0f0;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+/* -------------------------------
+   2. 输入框统一样式，但不挤压布局
+--------------------------------*/
+#viewSettings input,
+#viewSettings select {
+    width: 180px; /* 不再挤压表格 */
+    padding: 6px;
+    box-sizing: border-box;
+}
+
+#viewSettings input.model-key-input,
+#viewSettings input.role-key-input {
+    width: 140px;
+}
+
+/* 显示名稍宽一点 */
+#viewSettings .model-display-input,
+#viewSettings .role-display-input {
+    width: 140px;
+}
+
+/* URL 和 model 名需要更宽 */
+#viewSettings .model-baseurl-input,
+#viewSettings .model-name-input {
+    width: 140px;
+}
+/* delete 按钮较窄 ，且居中*/
+#viewSettings td:has(.delete-model-btn),
+#viewSettings td:has(.delete-role-btn) {
+    text-align: center;
+    width: 40px;
+}
+
+
+
+/* temperature 较窄 */
+#viewSettings .model-temp-input {
+    width: 80px;
+}
+/* role 关联的 model 下拉框 */
+#viewSettings .role-model-select {
+    width: 140px;
+}
+#viewSettings .role-user-input {
+    width: 220px;
+}
+
+
+/* roles 的 prompt 文本区域占大空间 */
+#viewSettings textarea {
+    width: 360px;
+    min-height: 90px;
+    max-height: 400px;
+    resize: vertical;      /* 允许用户拖动高度 */
+    overflow-y: auto;      /* 支持滚动，不撑爆布局 */
+    font-family: 微软雅黑, Arial, sans-serif;
+    font-size: 13px;
+    padding: 6px;
+    border: 1px solid #ccc;
+    background: #fafafa;
+    border-radius: 4px;
+}
+
+/* -------------------------------
+   3. 表格 Hover 提升可读性
+--------------------------------*/
+#viewSettings tbody tr:hover {
+    background-color: #f8f8f8;
+}
+
+/* -------------------------------
+   4. 删除按钮颜色区分
+--------------------------------*/
+#viewSettings .delete-model-btn,
+#viewSettings .delete-role-btn {
+    background-color: #ff6666;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+}
+
+#viewSettings .delete-model-btn:hover,
+#viewSettings .delete-role-btn:hover {
+    background-color: #e05555;
+}
+
+/* -------------------------------
+   5. DefaultModel 下拉框美化
+--------------------------------*/
+#defaultModelSelect {
+    padding: 6px;
+    margin-left: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* ============================================
+   美化所有出现在 #viewSettings 区域里的滚动条
+   ============================================ */
+
+#viewSettings *::-webkit-scrollbar {
+    width: 0px;      /* 竖直滚动条宽度 */
+    height: 6px;     /* 水平滚动条高度（表格横向滚动用） */
+}
+
+/* 滚动条底槽（背景轨道） */
+#viewSettings *::-webkit-scrollbar-track {
+    background: #f0f3f7;
+    border-radius: 8px;
+}
+
+/* 滚动条滑块（可拖动的部分） */
+#viewSettings *::-webkit-scrollbar-thumb {
+    background: #b7c4d8;  /* 柔和浅蓝灰 */
+    border-radius: 6px;
+    border: 2px solid #f0f3f7; /* 增加内边距，让滑块更细腻 */
+}
+
+/* 滑块 hover 效果 */
+#viewSettings *::-webkit-scrollbar-thumb:hover {
+    background: #8ba3c9;
+}
+
+/* 滑块 active（正在拖拽时） */
+#viewSettings *::-webkit-scrollbar-thumb:active {
+    background: #5d7daf;
+}
