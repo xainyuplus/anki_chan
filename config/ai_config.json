@@ -1,0 +1,37 @@
+{
+  "defaultModel": "deepseek",
+  "models": {
+    "deepseek": {
+      "displayName": "DeepSeek Chat",
+      "apiKeyEnvName": "DEEPSEEK_API_KEY",
+      "baseURL": "https://api.deepseek.com/v1/chat/completions",
+      "model": "deepseek-chat",
+      "temperature": 0.7
+    },
+    "qwenFlash": {
+      "displayName": "Qwen Flash",
+      "apiKeyEnvName": "QWEN_API_KEY",
+      "baseURL": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+      "model": "qwen2.5-flash",
+      "temperature": 0.6
+    }
+  },
+  "roles": {
+    "teacherQuestion": {
+      "displayName": "Teacher Question",
+      "model": "qwenFlash",
+      "template": {
+        "system": "你是一个名为Anki酱的学习伙伴……",
+        "user": "Flashcard Front: {{front}}"
+      }
+    },
+    "teacherFeedback": {
+      "displayName": "Teacher Feedback",
+      "model": "deepseek",
+      "template": {
+        "system": "你是一位温和的学习监督者……",
+        "user": "Flashcard: {{front}}\nCorrect: {{back}}\nUser: {{answer}}"
+      }
+    }
+  }
+}

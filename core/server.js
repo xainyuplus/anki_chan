@@ -3,6 +3,8 @@ const express = require("express");
 const anki = require('./ankiconnect');
 const app = express();
 const callAIChat = require('./ai');
+const bodyParser = require("body-parser");
+const { loadSettings, saveSettings } = require("./settingsStore");
 require("dotenv").config();
 
 app.use(express.json());
@@ -24,7 +26,7 @@ app.post('/api/ai/generate-question', async (req, res) => {
         return res.json({ success: false, error: 'cardFront missing' });
     }
 
-    try { 
+    try {
         const question = await callAIChat({
             apiKeyEnvName,
             aiUrl,
@@ -101,7 +103,7 @@ app.get('/api/decks', async (req, res) => {
 
 app.post("/api/cards/search", async (req, res) => {
     const { query } = req.body;
-   try {
+    try {
         const cardIds = await anki.findCards(query);
         res.json({ success: true, result: cardIds });
     } catch (err) {
@@ -115,11 +117,17 @@ app.post('/api/cards/info', async (req, res) => {
 
     try {
         const cards = await anki.cardsInfo(cardIds);
+        //console.log("Fetched cards info:", cards);
 
         // 后端统一抽取 front 字段，前端不负责解析结构
         const simplified = cards.map(c => ({
             cardId: c.cardId,
-            front: c.fields?.Front?.value || Object.values(c.fields)[0]?.value || "No front"
+            front: c.fields?.Front?.value || Object.values(c.fields)[0]?.value || "No front",
+            back: c.fields?.Back?.value || Object.values(c.fields)[1]?.value || "No back",
+            queue: c.queue,
+            due: c.due,
+            nextReviews: c.nextReviews,
+            interval: c.interval
         }));
 
         res.json({ success: true, cards: simplified });
@@ -127,7 +135,34 @@ app.post('/api/cards/info', async (req, res) => {
         res.json({ success: false, error: err.message });
     }
 });
+// GET /api/settings  -> 返回完整 settings JSON
+app.get("/api/settings", (req, res) => {
+    try {
+        const settings = loadSettings();
+        res.json(settings);
+    } catch (err) {
+        console.error("Failed to load settings:", err);
+        res.status(500).json({ error: "Failed to load settings" });
+    }
+});
 
+// POST /api/settings  -> 覆盖 settings
+app.post("/api/settings", (req, res) => {
+    try {
+        const newSettings = req.body;
+
+        // 可以在这里做一点简单校验（可选）
+        if (!newSettings || typeof newSettings !== "object") {
+            return res.status(400).json({ error: "Invalid settings payload" });
+        }
+
+        saveSettings(newSettings);
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Failed to save settings:", err);
+        res.status(500).json({ error: "Failed to save settings" });
+    }
+});
 
 
 

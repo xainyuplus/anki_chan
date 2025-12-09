@@ -88,8 +88,10 @@
     transition: background-color 0.15s ease;
     border-radius: 4px;
  }
+ /* Hover effect for deck items 悬浮时字体变蓝*/
  #sidebarDecks li>span:hover {
-   background-color: #dedede;
+    color: #007bff;
+
  }
 .toggle-arrow {
     display: inline-block;

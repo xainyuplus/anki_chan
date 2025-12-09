@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>anki_chan</title>
   <link rel="stylesheet" href="main.css">
 </head>
+
 <body>
 
   <div id="topBar">
@@ -85,36 +87,54 @@
 
       <div id="viewSettings">
         <h2>Settings</h2>
+        <h2>AI Settings</h2>
 
-        <div>
-          <label for="apiKeyEnvName">API Key Environment Variable Name:</label><br>
-          <input type="text" id="apiKeyEnvNameInput" placeholder="e.g. DEEPSEEK_API_KEY">
-        </div>
-        <div>
-          <label for="aiUrlInput">AI URL:</label><br>
-          <input type="text" id="aiUrlInput" placeholder="e.g. https://api.deepseek.ai/v1/chat/completions">
-        </div>
+        <h3>Models</h3>
+        <button id="addModelBtn" type="button">Add Model</button>
+        <table id="modelsTable">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Display Name</th>
+              <th>API Key Env</th>
+              <th>Base URL</th>
+              <th>Model Name</th>
+              <th>Temperature</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- JS 渲染 -->
+          </tbody>
+        </table>
 
-        <div>
-          <label for="modelNameInput">Model name:</label><br>
-          <input type="text" id="modelNameInput" placeholder="e.g. deepseek-chat">
-        </div>
+        <h3>Roles</h3>
+        <button id="addRoleBtn" type="button">Add Role</button>
+        <table id="rolesTable">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Display Name</th>
+              <th>Model</th>
+              <th>System Prompt</th>
+              <th>User Prompt</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- JS 渲染 -->
+          </tbody>
+        </table>
 
-        <div>
-          <label for="temperatureInput">Temperature:</label><br>
-          <input type="number" id="temperatureInput" step="0.1" min="0" max="2" value="0.7">
-        </div>
+        <button id="saveSettingsBtn" type="button">Save Settings</button>
 
-        <div>
-          <button id="btnSaveSettings">Save Settings</button>
-        </div>
+
       </div>
 
     </div>
-
-  </div>
-
-  <script src="main.js"></script>
+    <script src="js/settingManage.js">  </script>
+    <script src="main.js"></script>
 
 </body>
+
 </html>

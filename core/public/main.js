@@ -5,12 +5,7 @@ const AppState = {
     currentCardIndex: 0,
     currentDeck: null,
     currentQuery: null,
-    settings: {
-        apiKeyEnvName: 'DEEPSEEK_API_KEY',
-        aiUrl: 'https://api.deepseek.com/v1/chat/completions',
-        modelName: 'deepseek-chat',
-        temperature: 0.7
-    },
+    settings: null,
     allCards: []
 };
 
@@ -50,7 +45,9 @@ function bindEvents() {
         showView('viewSettings');
     });
 
-    document.getElementById('btnSaveSettings').addEventListener('click', saveSettings);
+    document.getElementById("addModelBtn").addEventListener("click", addEmptyModelRow);
+    document.getElementById("addRoleBtn").addEventListener("click", addEmptyRoleRow);
+    document.getElementById("saveSettingsBtn").addEventListener("click", saveSettings);
 
     // 卡片列表操作
     document.getElementById('btnAddSelectedToQueue').addEventListener('click', addSelectedToQueue);
@@ -59,6 +56,12 @@ function bindEvents() {
     // 学习界面
     document.getElementById('btnGetFeedback').addEventListener('click', getFeedback);
     document.getElementById('btnNextCard').addEventListener('click', nextCard);
+    // 添加快捷键：点击队列中的卡片也能开始学习
+    document.getElementById('queueList').addEventListener('click', (e) => {
+    if (e.target.tagName === 'SPAN') {
+        startStudy();
+    }
+});
 }
 
 // 显示/隐藏视图
@@ -80,7 +83,7 @@ function showSidebarTab(tabId) {
 async function loadDecks() {
     if (AppState.decks.length > 0) {
         renderDeckTree(AppState.decks);
-       // console.log("Decks loaded from cache");
+        // console.log("Decks loaded from cache");
         return;
     }
 
@@ -106,7 +109,7 @@ function buildDeckTree(deckNames) {
         let node = root;
 
         parts.forEach((p, i) => {
-            if (!node[p]) node[p] = { __children: {}, __fullName: parts.slice(0, i+1).join("::") };
+            if (!node[p]) node[p] = { __children: {}, __fullName: parts.slice(0, i + 1).join("::") };
             node = node[p].__children;
         });
     });
@@ -139,7 +142,7 @@ function renderTreeNode(tree, container) {
             renderTreeNode(children, ul);
             li.appendChild(ul);
             ul.style.display = "none";
-             toggle.addEventListener("click", (e) => {
+            toggle.addEventListener("click", (e) => {
                 e.stopPropagation();
                 const isCollapsed = ul.style.display === "none";
                 ul.style.display = isCollapsed ? "block" : "none";
@@ -182,7 +185,7 @@ async function loadCardInfo(cardIds) {
         if (!data.success) {
             throw new Error(data.error || "Unknown error");
         }
-
+        //这里会增加更多信息
         const cards = data.cards.map(card => ({
             id: card.cardId,
             front: card.front
@@ -228,13 +231,13 @@ async function performSearch() {
     }
 
     updateSearchState(query);
-        const  query_result = await apiFindCards(query);
-        if (!query_result.success) {
-            alert("Search error: " + query_result.error);
-            return;
-        }
-        const cardIds = query_result.result;
-        await loadCardInfo(cardIds);
+    const query_result = await apiFindCards(query);
+    if (!query_result.success) {
+        alert("Search error: " + query_result.error);
+        return;
+    }
+    const cardIds = query_result.result;
+    await loadCardInfo(cardIds);
 }
 //虽然暂时没什么用，但为将来扩展做准备
 function getSearchQuery() {
@@ -279,11 +282,12 @@ function addSelectedToQueue() {
 }
 
 async function addAllDueToQueue() {
+    //这里的逻辑是有问题的，现在的实现仅是把所有卡放进去
     if (AppState.allCards.length === 0) {
         alert('No cards loaded');
         return;
     }
-
+    console.log("Adding all cards to queue:", AppState.allCards);
     AppState.allCards.forEach(card => {
         if (!AppState.studyQueue.find(c => c.id === card.id)) {
             AppState.studyQueue.push(card);
@@ -317,6 +321,7 @@ function renderQueue() {
     // 如果队列有内容，可以开始学习
     if (AppState.studyQueue.length > 0 && AppState.currentCardIndex >= AppState.studyQueue.length) {
         AppState.currentCardIndex = 0;
+
     }
 }
 
@@ -401,7 +406,7 @@ async function getFeedback() {
     }
 
     const cardFront = document.getElementById('studyFront').textContent;
-    const question  = document.getElementById('studyQuestion').textContent;
+    const question = document.getElementById('studyQuestion').textContent;
 
     document.getElementById('studyFeedback').textContent = 'Getting feedback...';
 
@@ -450,33 +455,13 @@ function nextCard() {
     loadCurrentCard();
 }
 
-// 设置管理
-function loadSettings() {
-    const saved = JSON.parse(localStorage.getItem('ankiChanSettings') || '{}');
-    AppState.settings = { ...AppState.settings, ...saved };
 
-    document.getElementById('apiKeyEnvNameInput').value = AppState.settings.apiKeyEnvName || 'DEEPSEEK_API_KEY';
-    document.getElementById('aiUrlInput').value = AppState.settings.aiUrl || 'https://api.deepseek.com/v1/chat/completions';
-    document.getElementById('modelNameInput').value = AppState.settings.modelName || 'deepseek-chat';
-    document.getElementById('temperatureInput').value = AppState.settings.temperature || 0.7;
-}
 
-function saveSettings() {
-    AppState.settings.apiKeyEnvName = document.getElementById('apiKeyEnvNameInput').value;
-    AppState.settings.aiUrl = document.getElementById('aiUrlInput').value;
-    AppState.settings.modelName = document.getElementById('modelNameInput').value;
-    AppState.settings.temperature = parseFloat(document.getElementById('temperatureInput').value);
 
-    localStorage.setItem('ankiChanSettings', JSON.stringify(AppState.settings));
-    alert('Settings saved!');
-}
+
+
 
 // 启动应用
 init();
 
-// 添加快捷键：点击队列中的卡片也能开始学习
-document.getElementById('queueList').addEventListener('click', (e) => {
-    if (e.target.tagName === 'SPAN') {
-        startStudy();
-    }
-});
+
