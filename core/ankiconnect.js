@@ -34,6 +34,15 @@ export async function getDecks() {
   const decks = await invoke("deckNames");
   return decks;
 }
+
+export async function modelNames() {
+    return await invoke("modelNames");
+}
+
+export async function getTags() {
+    return await invoke("getTags");
+}
+
 export async function findCards(query) {
     return await invoke("findCards", { query });
 }

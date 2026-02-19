@@ -214,6 +214,39 @@
     color: #721c24;
 }
 
+.queue-suspended {
+    background-color: #d1d1d1;
+    color: #555;
+}
+
+.queue-buried {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+/* 旗标样式 */
+.flag-1 { background-color: #ffebee; color: #c62828; } /* 红旗 */
+.flag-2 { background-color: #fff3e0; color: #ef6c00; } /* 橙旗 */
+.flag-3 { background-color: #e8f5e9; color: #2e7d32; } /* 绿旗 */
+.flag-4 { background-color: #e3f2fd; color: #1565c0; } /* 蓝旗 */
+.flag-5 { background-color: #fce4ec; color: #c2185b; } /* 粉旗 */
+.flag-6 { background-color: #e0f7fa; color: #00838f; } /* 青旗 */
+.flag-7 { background-color: #f3e5f5; color: #6a1b9a; } /* 紫旗 */
+
+/* 笔记模板和标签样式 */
+.note-type {
+    background-color: #e8eaf6;
+    color: #3f51b5;
+}
+
+.tag-info {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* 评分按钮样式 */
 .rating-btn {
     padding: 10px 20px;

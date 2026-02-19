@@ -47,6 +47,21 @@
         <div class="btn-group">
           <button id="btnAddSelectedToQueue">Add selected to Queue</button>
         </div>
+        <div style="margin: 10px 0;">
+          <label>筛选条件：</label>
+          <select id="filterCategory" style="margin-right: 10px;">
+            <option value="">无筛选</option>
+            <option value="today">今天</option>
+            <option value="flag">旗标</option>
+            <option value="state">卡片状态</option>
+            <option value="note">笔记模板</option>
+            <option value="tag">标签</option>
+          </select>
+          <select id="filterSubCategory" style="display: none;">
+            <option value="">请选择</option>
+          </select>
+          <button id="btnApplyFilter">应用筛选</button>
+        </div>
         <table id="cardTable">
           <thead>
             <tr>

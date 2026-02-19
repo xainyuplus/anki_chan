@@ -6,7 +6,56 @@ const AppState = {
     currentDeck: null,
     currentQuery: null,
     settings: null,
-    allCards: []
+    allCards: [],
+    models: [], // 笔记模板列表
+    tags: [] // 标签列表
+};
+
+// 筛选配置
+const FilterConfig = {
+    today: {
+        label: '今天',
+        options: [
+            { value: 'prop:due=0', label: '今天到期' },
+            { value: 'added:1', label: '今天添加' },
+            { value: 'edited:1', label: '今天编辑' },
+            { value: 'rated:1', label: '今天学习' },
+            { value: 'introduced:1', label: '首次复习' },
+            { value: 'resched:1', label: '已重新排程' },
+            { value: 'rated:1:1', label: '今天重来' },
+            { value: 'is:due -prop:due=0', label: '逾期未复习' }
+        ]
+    },
+    flag: {
+        label: '旗标',
+        options: [
+            { value: 'flag:1', label: '红旗' },
+            { value: 'flag:2', label: '橙旗' },
+            { value: 'flag:3', label: '绿旗' },
+            { value: 'flag:4', label: '蓝旗' },
+            { value: 'flag:5', label: '粉旗' },
+            { value: 'flag:6', label: '青旗' },
+            { value: 'flag:7', label: '紫旗' }
+        ]
+    },
+    state: {
+        label: '卡片状态',
+        options: [
+            { value: 'is:new', label: '未学习' },
+            { value: 'is:learn', label: '学习中' },
+            { value: 'is:review', label: '复习中' },
+            { value: 'is:buried', label: '已搁置' },
+            { value: 'is:suspended', label: '已暂停' }
+        ]
+    },
+    note: {
+        label: '笔记模板',
+        options: [] // 动态加载
+    },
+    tag: {
+        label: '标签',
+        options: [] // 动态加载
+    }
 };
 
 // 初始化
@@ -17,6 +66,7 @@ function init() {
     bindEvents();
     loadDecks();
     loadQueueCards();
+    loadModelsAndTags();
 }
 
 // 绑定所有事件
@@ -52,6 +102,10 @@ function bindEvents() {
 
     // 卡片列表操作
     document.getElementById('btnAddSelectedToQueue').addEventListener('click', addSelectedToQueue);
+
+    // 筛选功能
+    document.getElementById('filterCategory').addEventListener('change', onFilterCategoryChange);
+    document.getElementById('btnApplyFilter').addEventListener('click', applyFilter);
 
     // 学习界面
     document.getElementById('btnGetFeedback').addEventListener('click', getFeedback);
@@ -99,6 +153,95 @@ async function loadDecks() {
     AppState.decks = decks;
     //console.log("Decks loaded from server:", decks);
     renderDeckTree(decks);
+}
+
+// 加载笔记模板和标签
+async function loadModelsAndTags() {
+    try {
+        // 加载笔记模板
+        const modelsResponse = await fetch('/api/models');
+        const modelsData = await modelsResponse.json();
+        if (modelsData.success) {
+            AppState.models = modelsData.models;
+            FilterConfig.note.options = modelsData.models.map(m => ({
+                value: `note:"${m}"`,
+                label: m
+            }));
+        }
+
+        // 加载标签
+        const tagsResponse = await fetch('/api/tags');
+        const tagsData = await tagsResponse.json();
+        if (tagsData.success) {
+            AppState.tags = tagsData.tags;
+            FilterConfig.tag.options = tagsData.tags.map(t => ({
+                value: `tag:"${t}"`,
+                label: t
+            }));
+        }
+    } catch (err) {
+        console.error('Failed to load models and tags:', err);
+    }
+}
+
+// 筛选类别改变时更新子选项
+function onFilterCategoryChange() {
+    const category = document.getElementById('filterCategory').value;
+    const subSelect = document.getElementById('filterSubCategory');
+
+    if (!category) {
+        subSelect.style.display = 'none';
+        return;
+    }
+
+    const config = FilterConfig[category];
+    if (!config) return;
+
+    subSelect.innerHTML = '<option value="">请选择</option>';
+    config.options.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.label;
+        subSelect.appendChild(option);
+    });
+
+    subSelect.style.display = 'inline-block';
+}
+
+// 应用筛选
+async function applyFilter() {
+    const category = document.getElementById('filterCategory').value;
+    const subCategory = document.getElementById('filterSubCategory').value;
+
+    if (!category) {
+        alert('请选择筛选类别');
+        return;
+    }
+
+    if (!subCategory) {
+        alert('请选择具体筛选条件');
+        return;
+    }
+
+    // 构建查询
+    let query = subCategory;
+
+    // 如果当前有选中的牌组，添加牌组限制
+    if (AppState.currentDeck) {
+        query = `deck:"${AppState.currentDeck}" ${subCategory}`;
+    }
+
+    AppState.currentQuery = query;
+
+    const query_result = await apiFindCards(query);
+    if (!query_result.success) {
+        alert("筛选失败: " + query_result.error);
+        return;
+    }
+
+    // 获取卡片详细信息
+    const cardIds = query_result.result;
+    await loadCardInfo(cardIds);
 }
 
 function renderDeckTree(deckNames) {
@@ -217,32 +360,59 @@ function renderCardList(cards) {
     const tbody = document.querySelector('#cardTable tbody');
     tbody.innerHTML = '';
 
+    const category = document.getElementById('filterCategory').value;
+
     cards.forEach(card => {
         const tr = document.createElement('tr');
         tr.dataset.cardId = card.id;
 
-        // queue 状态映射
-        let queueText = '';
-        let queueClass = '';
+        // 根据筛选类别显示不同的状态信息
+        let statusText = '';
+        let statusClass = '';
 
-        if (card.queue === 0) {
-            queueText = '未学习';
-            queueClass = 'queue-new';
-        } else if (card.queue === 1) {
-            queueText = '学习中';
-            queueClass = 'queue-learning';
-        } else if (card.queue === 2) {
-            //这里逻辑不对，due信息似乎不是表示还有几天到期
-            queueText = `待复习 (due: ${card.due})`;
-            queueClass = 'queue-due';
+        if (category === 'flag') {
+            // 显示旗标状态
+            const flagNames = ['', '红旗', '橙旗', '绿旗', '蓝旗', '粉旗', '青旗', '紫旗'];
+            statusText = card.flags ? flagNames[card.flags] || '无旗标' : '无旗标';
+            statusClass = card.flags ? `flag-${card.flags}` : '';
+        } else if (category === 'note') {
+            // 显示笔记模板
+            statusText = card.modelName || '未知模板';
+            statusClass = 'note-type';
+        } else if (category === 'tag') {
+            // 显示标签
+            statusText = card.tags && card.tags.length > 0 ? card.tags.join(', ') : '无标签';
+            statusClass = 'tag-info';
+        } else {
+            // 默认显示卡片状态
+            if (card.queue === 0) {
+                statusText = '未学习';
+                statusClass = 'queue-new';
+            } else if (card.queue === 1) {
+                statusText = '学习中';
+                statusClass = 'queue-learning';
+            } else if (card.queue === 2) {
+                //这里逻辑不对，due信息似乎不是表示还有几天到期
+                statusText = `待复习 (due: ${card.due})`;
+                statusClass = 'queue-due';
+            } else if (card.queue === -1) {
+                statusText = '已暂停';
+                statusClass = 'queue-suspended';
+            } else if (card.queue === -2) {
+                statusText = '已搁置';
+                statusClass = 'queue-buried';
+            } else if (card.queue === -3) {
+                statusText = '已搁置(手动)';
+                statusClass = 'queue-buried';
+            }
         }
 
         tr.innerHTML = `
           <td><input type="checkbox" class="card-select"></td>
           <td>${stripHtml(card.front).substring(0, 100)}</td>
           <td>
-            <span class="queue-tag ${queueClass}">
-              ${queueText}
+            <span class="queue-tag ${statusClass}">
+              ${statusText}
             </span>
           </td>
         `;

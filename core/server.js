@@ -72,6 +72,26 @@ app.get('/api/decks', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// 获取所有笔记模板
+app.get('/api/models', async (req, res) => {
+    try {
+        const models = await anki.modelNames();
+        res.json({ success: true, models });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// 获取所有标签
+app.get('/api/tags', async (req, res) => {
+    try {
+        const tags = await anki.getTags();
+        res.json({ success: true, tags });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
 // 搜索指定卡片 ID 列表
 
 app.post("/api/cards/search", async (req, res) => {
@@ -92,15 +112,22 @@ app.post('/api/cards/info', async (req, res) => {
         const cards = await anki.cardsInfo(cardIds);
         //console.log("Fetched cards info:", cards[0]);
 
+        // 获取所有 note IDs 以便获取标签
+        const noteIds = cards.map(c => c.note);
+        const notesInfo = await anki.notesInfo(noteIds);
+
         // 后端统一抽取 front 字段，前端不负责解析结构
-        const simplified = cards.map(c => ({
+        const simplified = cards.map((c, index) => ({
             cardId: c.cardId,
             front: c.fields?.Front?.value || Object.values(c.fields)[0]?.value || "No front",
             back: c.fields?.Back?.value || Object.values(c.fields)[1]?.value || "No back",
             queue: c.queue,
             due: c.due,
             nextReviews: c.nextReviews,
-            interval: c.interval
+            interval: c.interval,
+            flags: c.flags || 0,
+            modelName: c.modelName || '',
+            tags: notesInfo[index]?.tags || []
         }));
 
         res.json({ success: true, cards: simplified });
