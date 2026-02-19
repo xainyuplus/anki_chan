@@ -41,3 +41,54 @@ export async function findCards(query) {
 export async function cardsInfo(cardIds) {
     return await invoke("cardsInfo", { cards: cardIds });
 }
+
+// 临时牌组管理
+export async function changeDeck(cardIds, deckName) {
+    return await invoke("changeDeck", { cards: cardIds, deck: deckName });
+}
+
+export async function deleteDecks(deckNames, cardsToo = false) {
+    return await invoke("deleteDecks", { decks: deckNames, cardsToo });
+}
+
+// 标签管理
+export async function cardsToNotes(cardIds) {
+    return await invoke("cardsToNotes", { cards: cardIds });
+}
+
+export async function addTags(noteIds, tags) {
+    return await invoke("addTags", { notes: noteIds, tags });
+}
+
+export async function removeTags(noteIds, tags) {
+    return await invoke("removeTags", { notes: noteIds, tags });
+}
+
+export async function notesInfo(noteIds) {
+    return await invoke("notesInfo", { notes: noteIds });
+}
+
+// 复习状态更新
+export async function guiDeckReview(deckName) {
+    return await invoke("guiDeckReview", { name: deckName });
+}
+
+export async function guiShowQuestion() {
+    return await invoke("guiShowQuestion");
+}
+
+export async function guiShowAnswer() {
+    return await invoke("guiShowAnswer");
+}
+
+export async function guiAnswerCard(ease) {
+    return await invoke("guiAnswerCard", { ease });
+}
+
+export async function guiCurrentCard() {
+    return await invoke("guiCurrentCard");
+}
+
+export async function guiDeckBrowser() {
+    return await invoke("guiDeckBrowser");
+}

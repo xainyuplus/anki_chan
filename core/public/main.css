@@ -191,3 +191,75 @@
  .btn-group button {
    margin-right: 8px;
  }
+
+ .queue-tag {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.queue-new {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+.queue-learning {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+.queue-due {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* 评分按钮样式 */
+.rating-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.rating-btn[data-ease="1"] {
+    background-color: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+.rating-btn[data-ease="1"]:hover {
+    background-color: #c82333;
+}
+
+.rating-btn[data-ease="2"] {
+    background-color: #ffc107;
+    color: #333;
+    border-color: #ffc107;
+}
+
+.rating-btn[data-ease="2"]:hover {
+    background-color: #e0a800;
+}
+
+.rating-btn[data-ease="3"] {
+    background-color: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+.rating-btn[data-ease="3"]:hover {
+    background-color: #218838;
+}
+
+.rating-btn[data-ease="4"] {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.rating-btn[data-ease="4"]:hover {
+    background-color: #0069d9;
+}
+

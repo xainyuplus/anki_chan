@@ -1,22 +1,24 @@
 // 全局状态管理
 const AppState = {
-    studyQueue: [], // 当前学习的卡片列表
-    currentCardIndex: 0,
+    queues: [], // 多个队列 [{ id, name, cards: [{id, front, back, originalDeck}] }]
+    currentQueueId: null, // 当前选中的队列
     decks: [],
     currentDeck: null,
     currentQuery: null,
     settings: null,
-    allCards: []
+    allCards: [],
+    currentSession: null, // 当前正在学习的会话
+    studyingQueueId: null // 正在学习的队列 ID
 };
 
 // 初始化
 function init() {
     loadSettings();
+    loadQueuesFromStorage(); // 从 localStorage 加载队列
     showView('viewCardList');
     showSidebarTab('sidebarDecks');
     bindEvents();
     loadDecks();
-    loadQueueCards();
 }
 
 // 绑定所有事件
@@ -32,7 +34,7 @@ function bindEvents() {
         showSidebarTab('sidebarQueue');
         document.getElementById('tabQueue').classList.add('active');
         document.getElementById('tabDecks').classList.remove('active');
-        loadQueueCards();
+        renderQueue();
     });
 
     // 搜索
@@ -52,6 +54,7 @@ function bindEvents() {
 
     // 卡片列表操作
     document.getElementById('btnAddSelectedToQueue').addEventListener('click', addSelectedToQueue);
+    document.getElementById('btnAddAllDueToQueue').addEventListener('click', addAllDueToQueue);
 
     // 学习界面
     document.getElementById('btnGetFeedback').addEventListener('click', getFeedback);
@@ -64,12 +67,12 @@ function bindEvents() {
         });
     });
 
-    // 点击队列中的卡片开始学习
+    // 添加快捷键：点击队列中的卡片也能开始学习
     document.getElementById('queueList').addEventListener('click', (e) => {
-        if (e.target.classList.contains('queue-item-text')) {
-            startStudy();
-        }
-    });
+    if (e.target.tagName === 'SPAN') {
+        startStudy();
+    }
+});
 }
 
 // 显示/隐藏视图
@@ -298,61 +301,43 @@ async function apiFindCards(query) {
 }
 
 // 队列管理
-async function addSelectedToQueue() {
+function addSelectedToQueue() {
     const checkboxes = document.querySelectorAll('.card-select:checked');
     if (checkboxes.length === 0) {
         alert('Please select at least one card');
         return;
     }
 
-    const cardIds = [];
     checkboxes.forEach(cb => {
         const tr = cb.closest('tr');
         const cardId = parseInt(tr.dataset.cardId);
-        cardIds.push(cardId);
+        const cardText = tr.querySelector('td:nth-child(2)').textContent;
+        const cardDetail = AppState.allCards.find(c => c.id === cardId);
+
+        if (!AppState.studyQueue.find(c => c.id === cardId) && cardDetail) {
+            AppState.studyQueue.push({ id: cardId, front: cardDetail.front, back: cardDetail.back });
+        }
     });
 
-    try {
-        const response = await fetch('/api/queue/add-cards', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cardIds })
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            alert(`Added ${result.addedCount} card(s) to queue`);
-            loadQueueCards();
-            checkboxes.forEach(cb => cb.checked = false);
-        } else {
-            alert('Failed to add cards: ' + result.error);
-        }
-    } catch (err) {
-        console.error('Failed to add cards:', err);
-        alert('Failed to add cards');
-    }
+    alert(`Added ${checkboxes.length} card(s) to study queue`);
+    renderQueue();
 }
 
-// 加载队列中的卡片
-async function loadQueueCards() {
-    try {
-        const response = await fetch('/api/queue/cards');
-        const data = await response.json();
-
-        if (data.success) {
-            AppState.studyQueue = data.cards.map(c => ({
-                id: c.cardId,
-                front: c.front,
-                back: c.back,
-                queue: c.queue,
-                due: c.due
-            }));
-            renderQueue();
-        }
-    } catch (err) {
-        console.error('Failed to load queue cards:', err);
+async function addAllDueToQueue() {
+    //这里的逻辑是有问题的，现在的实现仅是把所有卡放进去
+    if (AppState.allCards.length === 0) {
+        alert('No cards loaded');
+        return;
     }
+    console.log("Adding all cards to queue:", AppState.allCards);
+    AppState.allCards.forEach(card => {
+        if (!AppState.studyQueue.find(c => c.id === card.id)) {
+            AppState.studyQueue.push({ ...card });
+        }
+    });
+
+    alert(`Added ${AppState.allCards.length} card(s) to study queue`);
+    renderQueue();
 }
 
 function renderQueue() {
@@ -363,7 +348,7 @@ function renderQueue() {
         const div = document.createElement('div');
         div.className = 'queue-item';
         div.innerHTML = `
-          <span class="queue-item-text">${stripHtml(card.front).substring(0, 50)}</span>
+          <span>${stripHtml(card.front).substring(0, 50)}</span>
           <button data-index="${index}">Remove</button>
         `;
         div.querySelector('button').addEventListener('click', async () => {
@@ -374,8 +359,10 @@ function renderQueue() {
 
     document.getElementById('queueSummary').textContent = `Total: ${AppState.studyQueue.length} cards`;
 
+    // 如果队列有内容，可以开始学习
     if (AppState.studyQueue.length > 0 && AppState.currentCardIndex >= AppState.studyQueue.length) {
         AppState.currentCardIndex = 0;
+
     }
 }
 
@@ -383,28 +370,41 @@ function renderQueue() {
 async function removeFromQueue(index) {
     const card = AppState.studyQueue[index];
 
-    try {
-        const response = await fetch('/api/queue/remove-card', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cardId: card.id })
-        });
+    // 如果有活跃会话，需要将卡片移回原牌组
+    if (AppState.currentSession) {
+        try {
+            const response = await fetch('/api/session/remove-card', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: AppState.currentSession.sessionId,
+                    cardId: card.id
+                })
+            });
 
-        const data = await response.json();
+            const data = await response.json();
 
-        if (!data.success) {
-            alert('Failed to remove card: ' + data.error);
+            if (!data.success) {
+                alert('Failed to remove card: ' + data.error);
+                return;
+            }
+
+            // 如果会话中没有卡片了，清理会话
+            if (data.remainingCards === 0) {
+                AppState.currentSession = null;
+                await loadSessions();
+            }
+
+        } catch (err) {
+            console.error('Failed to remove card from session:', err);
+            alert('Failed to remove card');
             return;
         }
-
-        // 从前端队列移除
-        AppState.studyQueue.splice(index, 1);
-        renderQueue();
-
-    } catch (err) {
-        console.error('Failed to remove card:', err);
-        alert('Failed to remove card');
     }
+
+    // 从前端队列移除
+    AppState.studyQueue.splice(index, 1);
+    renderQueue();
 }
 
 // 学习功能
@@ -414,13 +414,46 @@ async function startStudy() {
         return;
     }
 
-    // 在 Anki 中打开 Anki-chan 牌组
-    await openAnkiReview('Anki-chan');
+    // 创建学习会话
+    const cardIds = AppState.studyQueue.map(c => c.id);
 
-    // 开始学习流程
-    AppState.currentCardIndex = 0;
-    await loadCurrentCard();
-    showView('viewStudy');
+    try {
+        const response = await fetch('/api/session/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cardIds })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            alert('Failed to start study session: ' + data.error);
+            return;
+        }
+
+        AppState.currentSession = {
+            sessionId: data.sessionId,
+            tempDeckName: data.tempDeckName,
+            cardCount: data.cardCount
+        };
+
+        console.log('Study session started:', AppState.currentSession);
+
+        // 刷新会话列表
+        await loadSessions();
+
+        // 在 Anki 中打开临时牌组
+        await openAnkiReview(data.tempDeckName);
+
+        // 开始学习流程
+        AppState.currentCardIndex = 0;
+        await loadCurrentCard();
+        showView('viewStudy');
+
+    } catch (err) {
+        console.error('Failed to start study:', err);
+        alert('Failed to start study session');
+    }
 }
 
 // 在 Anki 中打开复习界面
@@ -453,12 +486,6 @@ async function loadCurrentCard() {
     document.getElementById('studyQuestion').textContent = 'Generating question...';
     document.getElementById('studyAnswer').value = '';
     document.getElementById('studyFeedback').textContent = '';
-
-    // 更新进度显示
-    const progressSpan = document.getElementById('studyProgress');
-    if (progressSpan) {
-        progressSpan.textContent = `${AppState.currentCardIndex + 1}/${AppState.studyQueue.length}`;
-    }
 
     // 生成AI问题
     await generateQuestion(card);
@@ -572,12 +599,71 @@ async function rateCard(ease) {
 function nextCard() {
     AppState.currentCardIndex++;
     if (AppState.currentCardIndex >= AppState.studyQueue.length) {
-        alert('You have completed all cards in the queue!');
-        showView('viewCardList');
+        // 学习完成，结束会话
+        endStudySession();
         return;
     }
     loadCurrentCard();
 }
+
+// 结束学习会话
+async function endStudySession() {
+    if (!AppState.currentSession) {
+        alert('You have completed all cards in the queue!');
+        showView('viewCardList');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/session/end', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: AppState.currentSession.sessionId })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            console.error('Failed to end session:', data.error);
+        }
+
+        AppState.currentSession = null;
+        AppState.studyQueue = [];
+        renderQueue();
+
+        // 刷新会话列表
+        await loadSessions();
+
+        alert('Study session completed! Cards have been moved back to their original decks.');
+        showView('viewCardList');
+
+    } catch (err) {
+        console.error('Failed to end session:', err);
+        alert('Study session completed, but cleanup may have failed.');
+        showView('viewCardList');
+    }
+}
+
+// 加载所有会话列表
+async function loadSessions() {
+    try {
+        const response = await fetch('/api/session/list');
+        const data = await response.json();
+
+        if (data.success) {
+            AppState.allSessions = data.sessions;
+            console.log('Active sessions:', AppState.allSessions);
+        }
+    } catch (err) {
+        console.error('Failed to load sessions:', err);
+    }
+}
+
+
+
+
+
+
 
 // 启动应用
 init();

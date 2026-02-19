@@ -11,16 +11,13 @@ app.use(express.json());
 const PORT = 3000;
 
 
-let queue = []; // learning queue
-
-
 app.get("/", (req, res) => {
     res.sendFile(__dirname + "/public/main.html");
 });
 
 
 app.post('/api/ai/generate-question', async (req, res) => {
-    const { cardFront, apiKeyEnvName, aiUrl, modelName, temperature } = req.body;
+    const { roleName = "teacherQuestion", cardFront, cardBack } = req.body;
 
     if (!cardFront) {
         return res.json({ success: false, error: 'cardFront missing' });
@@ -28,19 +25,8 @@ app.post('/api/ai/generate-question', async (req, res) => {
 
     try {
         const question = await callAIChat({
-            apiKeyEnvName,
-            aiUrl,
-            modelName,
-            temperature,
-            messages: [{
-                role: "system",
-                content:
-                    "你是一个名为“Anki酱”的学习伙伴。你的任务是：根据提供给你的一个问题，请你以老师或学伴的身份换一种方式（第一人称）提问用户，用来引导用户主动回忆。你提问时应体现轻微的情境感，你的语气傲娇、有一丝丝轻视，但不要夸张、不要动作描写，也不要使用括号中的表演提示（如“歪着头”“眨眼”“～”）。你不会使用颜文字或emoji。注意要求：1. 你只能提出问题，不要解释、不要提示答案。2.不要拟人化动作描写，不要使用“～”“* 动作 *”之类语气。4. 表达应注意简洁，可以使用适当的语气词。"
-            },
-            {
-                role: "user",
-                content: "问题是" + "{" + cardFront + "},现在请向用户发问",
-            }]
+            roleName,
+            variables: { front: cardFront, back: cardBack }
         });
 
         res.json({ success: true, question });
@@ -52,7 +38,7 @@ app.post('/api/ai/generate-question', async (req, res) => {
 });
 
 app.post('/api/ai/feedback', async (req, res) => {
-    const { cardFront, question, answer, apiKeyEnvName, aiUrl, modelName, temperature } = req.body;
+    const { roleName = "teacherFeedback", cardFront, cardBack, answer, question } = req.body;
 
     if (!answer) {
         return res.json({ success: false, error: 'answer missing' });
@@ -60,26 +46,8 @@ app.post('/api/ai/feedback', async (req, res) => {
 
     try {
         const feedback = await callAIChat({
-            apiKeyEnvName,
-            aiUrl,
-            modelName,
-            temperature,
-            messages: [
-                {
-                    role: "system",
-                    content:
-                        "你是一个名为“Anki酱”的学习伙伴。你的任务是：根据提供的闪卡内容、用户的回答与标准答案，给出第一人称的简短反馈。你的语气带一点傲娇、一丝轻视，但不要夸张，也不要使用括号中的动作描写（如“歪头”“～”）。你不会使用颜文字或emoji。反馈需要：1. 明确指出用户回答的优点；2. 指出哪里可以改进，描述要具体；3. 给出轻度鼓励，语气自然，稍微傲娇但不冒犯。4. 不要复述标准答案全文，也不要替用户重答，只能评价。表达保持简洁、有点别扭的关心感。"
-                },
-                {
-                    role: "user",
-                    content:
-                        `Flashcard: "${cardFront}"
-                        Question asked: "${question}"
-                        User answer: "${answer}"
-                        Now give feedback to the user.`
-                }
-            ]
-
+            roleName,
+            variables: { front: cardFront, back: cardBack, answer, question }
         });
 
         res.json({ success: true, feedback });
@@ -90,11 +58,16 @@ app.post('/api/ai/feedback', async (req, res) => {
     }
 });
 
-// 获取所有牌组
+// 获取所有牌组（过滤 Anki-chan 临时牌组）
 app.get('/api/decks', async (req, res) => {
     try {
         const decks = await anki.getDecks();
-        res.json(decks);
+        // 过滤掉所有 Anki-chan 相关的牌组（包括父牌组和子牌组）
+        const filteredDecks = decks.filter(deck =>
+            !deck.startsWith('Anki-chan') &&
+            deck !== 'Anki-chan'
+        );
+        res.json(filteredDecks);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -117,7 +90,7 @@ app.post('/api/cards/info', async (req, res) => {
 
     try {
         const cards = await anki.cardsInfo(cardIds);
-        //console.log("Fetched cards info:", cards);
+        //console.log("Fetched cards info:", cards[0]);
 
         // 后端统一抽取 front 字段，前端不负责解析结构
         const simplified = cards.map(c => ({
@@ -161,6 +134,152 @@ app.post("/api/settings", (req, res) => {
     } catch (err) {
         console.error("Failed to save settings:", err);
         res.status(500).json({ error: "Failed to save settings" });
+    }
+});
+
+// Queue 管理 API（单一队列：Anki-chan）
+const QUEUE_DECK_NAME = 'Anki-chan';
+
+// 添加卡片到队列
+app.post('/api/queue/add-cards', async (req, res) => {
+    const { cardIds } = req.body;
+
+    if (!cardIds || cardIds.length === 0) {
+        return res.json({ success: false, error: 'Card IDs required' });
+    }
+
+    try {
+        // 获取卡片当前所属牌组
+        const cardsInfo = await anki.cardsInfo(cardIds);
+
+        // 移动卡片到队列
+        await anki.changeDeck(cardIds, QUEUE_DECK_NAME);
+
+        // 为每张卡片添加原始牌组标签
+        const noteIds = await anki.cardsToNotes(cardIds);
+
+        for (let i = 0; i < cardIds.length; i++) {
+            const originalDeck = cardsInfo[i].deckName;
+            const noteId = noteIds[i];
+
+            // 添加标签记录原始牌组
+            await anki.addTags([noteId], `anki-chan-origin::${originalDeck}`);
+        }
+
+        res.json({ success: true, addedCount: cardIds.length });
+
+    } catch (err) {
+        console.error('Failed to add cards to queue:', err);
+        res.json({ success: false, error: err.message });
+    }
+});
+
+// 获取队列中的卡片
+app.get('/api/queue/cards', async (req, res) => {
+    try {
+        const cardIds = await anki.findCards(`deck:"${QUEUE_DECK_NAME}"`);
+        const cards = await anki.cardsInfo(cardIds);
+
+        const simplified = cards.map(c => ({
+            cardId: c.cardId,
+            front: c.fields?.Front?.value || Object.values(c.fields)[0]?.value || "No front",
+            back: c.fields?.Back?.value || Object.values(c.fields)[1]?.value || "No back",
+            queue: c.queue,
+            due: c.due
+        }));
+
+        res.json({ success: true, cards: simplified });
+
+    } catch (err) {
+        console.error('Failed to get queue cards:', err);
+        res.json({ success: false, error: err.message });
+    }
+});
+
+// 从队列中移除单个卡片（移回原牌组）
+app.post('/api/queue/remove-card', async (req, res) => {
+    const { cardId } = req.body;
+
+    if (!cardId) {
+        return res.json({ success: false, error: 'Card ID required' });
+    }
+
+    try {
+        // 获取卡片信息
+        const cardInfo = await anki.cardsInfo([cardId]);
+        if (cardInfo.length === 0) {
+            return res.json({ success: false, error: 'Card not found' });
+        }
+
+        const noteId = cardInfo[0].note;
+
+        // 查找原始牌组标签
+        const noteInfo = await anki.notesInfo([noteId]);
+        const tags = noteInfo[0].tags;
+
+        let originalDeck = 'Default';
+        for (const tag of tags) {
+            if (tag.startsWith('anki-chan-origin::')) {
+                originalDeck = tag.replace('anki-chan-origin::', '');
+                break;
+            }
+        }
+
+        // 移回原牌组
+        await anki.changeDeck([cardId], originalDeck);
+
+        // 清理标签
+        await anki.removeTags([noteId], `anki-chan-origin::${originalDeck}`);
+
+        res.json({ success: true });
+
+    } catch (err) {
+        console.error('Failed to remove card from queue:', err);
+        res.json({ success: false, error: err.message });
+    }
+});
+
+// Anki GUI 操作：答题
+app.post('/api/anki/answer', async (req, res) => {
+    const { ease } = req.body; // 1=Again, 2=Hard, 3=Good, 4=Easy
+
+    if (!ease || ease < 1 || ease > 4) {
+        return res.json({ success: false, error: 'Invalid ease value' });
+    }
+
+    try {
+        // 显示答案
+        await anki.guiShowAnswer();
+
+        // 等待一小段时间确保 Anki 准备好
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // 提交答案
+        const result = await anki.guiAnswerCard(ease);
+
+        res.json({ success: true, result });
+
+    } catch (err) {
+        console.error('Failed to answer card:', err);
+        res.json({ success: false, error: err.message });
+    }
+});
+
+// 在 Anki 中打开牌组复习
+app.post('/api/anki/review-deck', async (req, res) => {
+    const { deckName } = req.body;
+
+    if (!deckName) {
+        return res.json({ success: false, error: 'Deck name required' });
+    }
+
+    try {
+        const result = await anki.guiDeckReview(deckName);
+        res.json({ success: true, result });
+
+    } catch (err) {
+        console.error('Failed to start deck review:', err);
+        res.json({ success: false, error: err.message });
     }
 });
 
