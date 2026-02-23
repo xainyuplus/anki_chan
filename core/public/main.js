@@ -8,7 +8,14 @@ const AppState = {
     settings: null,
     allCards: [],
     models: [], // 笔记模板列表
-    tags: [] // 标签列表
+    tags: [], // 标签列表
+    // 框选状态
+    isSelecting: false,
+    selectionStart: { x: 0, y: 0 },
+    selectionBox: null,
+    initialCheckboxStates: new Map(), // 记录框选开始时的checkbox状态
+    // 队列学习模式
+    queueMode: 'auto' // auto: 自动移出已完成, once: 学习一次即移出, keep: 保留反复学习
 };
 
 // 筛选配置
@@ -64,13 +71,85 @@ function init() {
     showView('viewCardList');
     showSidebarTab('sidebarDecks');
     bindEvents();
-    loadDecks();
-    loadQueueCards();
-    loadModelsAndTags();
+    loadQueueMode();
+    loadSidebarState();
+    checkAnkiConnection();
+}
+
+// 加载队列学习模式
+function loadQueueMode() {
+    const savedMode = localStorage.getItem('queueMode');
+    if (savedMode) {
+        AppState.queueMode = savedMode;
+        document.getElementById('queueMode').value = savedMode;
+    }
+}
+
+// 侧边栏折叠功能
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const isCollapsed = sidebar.classList.toggle('collapsed');
+
+    // 保存折叠状态
+    localStorage.setItem('sidebarCollapsed', isCollapsed);
+
+    // 更新按钮图标
+    const toggleBtn = document.getElementById('sidebarToggle');
+    toggleBtn.textContent = isCollapsed ? '☰' : '✕';
+}
+
+// 加载侧边栏折叠状态
+function loadSidebarState() {
+    const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+    if (isCollapsed) {
+        document.getElementById('sidebar').classList.add('collapsed');
+        document.getElementById('sidebarToggle').textContent = '☰';
+    }
+}
+
+// 检查Anki连接状态
+async function checkAnkiConnection() {
+    try {
+        const response = await fetch('/api/anki/status');
+        const data = await response.json();
+
+        if (data.success && data.connected) {
+            // 连接成功，继续加载数据
+            loadDecks();
+            loadQueueCards();
+            loadModelsAndTags();
+            return;
+        }
+
+        // 连接失败，显示提示
+        showAnkiConnectionModal();
+    } catch (error) {
+        // 连接失败，显示提示
+        showAnkiConnectionModal();
+    }
+}
+
+// 显示Anki连接提示弹窗
+function showAnkiConnectionModal() {
+    document.getElementById('ankiConnectionModal').style.display = 'block';
+}
+
+// 隐藏Anki连接提示弹窗
+function hideAnkiConnectionModal() {
+    document.getElementById('ankiConnectionModal').style.display = 'none';
 }
 
 // 绑定所有事件
 function bindEvents() {
+    // 侧边栏折叠
+    document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
+
+    // 侧边栏展开
+    const expandBtn = document.getElementById('sidebarExpandBtn');
+    if (expandBtn) {
+        expandBtn.addEventListener('click', toggleSidebar);
+    }
+
     // Tab切换
     document.getElementById('tabDecks').addEventListener('click', () => {
         showSidebarTab('sidebarDecks');
@@ -108,6 +187,7 @@ function bindEvents() {
     document.getElementById('btnApplyFilter').addEventListener('click', applyFilter);
 
     // 学习界面
+    document.getElementById('btnShowAnswer').addEventListener('click', showAnswer);
     document.getElementById('btnGetFeedback').addEventListener('click', getFeedback);
 
     // 评分按钮
@@ -124,6 +204,21 @@ function bindEvents() {
             startStudy();
         }
     });
+
+    // 框选功能
+    initCardTableSelection();
+
+    // Anki连接重试按钮
+    document.getElementById('btnRetryConnection').addEventListener('click', async () => {
+        hideAnkiConnectionModal();
+        await checkAnkiConnection();
+    });
+
+    // 队列学习模式选择
+    document.getElementById('queueMode').addEventListener('change', (e) => {
+        AppState.queueMode = e.target.value;
+        localStorage.setItem('queueMode', e.target.value);
+    });
 }
 
 // 显示/隐藏视图
@@ -132,6 +227,9 @@ function showView(viewId) {
         document.getElementById(id).style.display = 'none';
     });
     document.getElementById(viewId).style.display = 'block';
+
+    // 更新侧边栏展开按钮
+    updateSidebarExpandBtn(viewId);
 }
 
 function showSidebarTab(tabId) {
@@ -384,27 +482,9 @@ function renderCardList(cards) {
             statusText = card.tags && card.tags.length > 0 ? card.tags.join(', ') : '无标签';
             statusClass = 'tag-info';
         } else {
-            // 默认显示卡片状态
-            if (card.queue === 0) {
-                statusText = '未学习';
-                statusClass = 'queue-new';
-            } else if (card.queue === 1) {
-                statusText = '学习中';
-                statusClass = 'queue-learning';
-            } else if (card.queue === 2) {
-                //这里逻辑不对，due信息似乎不是表示还有几天到期
-                statusText = `待复习 (due: ${card.due})`;
-                statusClass = 'queue-due';
-            } else if (card.queue === -1) {
-                statusText = '已暂停';
-                statusClass = 'queue-suspended';
-            } else if (card.queue === -2) {
-                statusText = '已搁置';
-                statusClass = 'queue-buried';
-            } else if (card.queue === -3) {
-                statusText = '已搁置(手动)';
-                statusClass = 'queue-buried';
-            }
+            // 默认显示queue状态
+            statusText = getQueueStatusText(card);
+            statusClass = getQueueStatusClass(card);
         }
 
         tr.innerHTML = `
@@ -423,6 +503,30 @@ function renderCardList(cards) {
     showView('viewCardList');
 }
 
+// 获取队列状态文本
+function getQueueStatusText(card) {
+    const queue = card.queue;
+
+    if (queue === 0) return '未学习';
+    if (queue === 1) return '学习中';
+    if (queue === 2) return '复习中';
+    if (queue === -1) return '已暂停';
+    if (queue === -2) return '已搁置';
+    if (queue === -3) return '已搁置(手动)';
+    return '未知状态';
+}
+
+// 获取队列状态样式类
+function getQueueStatusClass(card) {
+    const queue = card.queue;
+
+    if (queue === 0) return 'queue-new';
+    if (queue === 1) return 'queue-learning';
+    if (queue === 2) return 'queue-due';
+    if (queue === -1) return 'queue-suspended';
+    if (queue === -2 || queue === -3) return 'queue-buried';
+    return '';
+}
 
 function stripHtml(html) {
     const tmp = document.createElement('div');
@@ -516,7 +620,9 @@ async function loadQueueCards() {
                 front: c.front,
                 back: c.back,
                 queue: c.queue,
-                due: c.due
+                due: c.due,
+                nextReviews: c.nextReviews,
+                interval: c.interval
             }));
             renderQueue();
         }
@@ -622,13 +728,26 @@ async function loadCurrentCard() {
     document.getElementById('studyFront').textContent = stripHtml(card.front);
     document.getElementById('studyQuestion').textContent = 'Generating question...';
     document.getElementById('studyAnswer').value = '';
+    document.getElementById('studyBack').textContent = '';
     document.getElementById('studyFeedback').textContent = '';
+
+    // 隐藏评分按钮
+    const ratingSection = document.querySelector('.rating-section');
+    if (ratingSection) {
+        ratingSection.classList.remove('visible');
+    }
 
     // 更新进度显示
     const progressSpan = document.getElementById('studyProgress');
     if (progressSpan) {
         progressSpan.textContent = `${AppState.currentCardIndex + 1}/${AppState.studyQueue.length}`;
     }
+
+    // 同步更新侧边栏展开按钮的进度显示
+    updateSidebarExpandBtn('viewStudy');
+
+    // 更新评分按钮显示next interval
+    updateRatingButtons(card);
 
     // 生成AI问题
     await generateQuestion(card);
@@ -664,6 +783,36 @@ async function generateQuestion(card) {
         document.getElementById('studyQuestion').textContent =
             'Error generating question.';
     }
+}
+
+// 显示卡片背面
+function showAnswer() {
+    const card = AppState.studyQueue[AppState.currentCardIndex];
+    document.getElementById('studyBack').innerHTML = card.back;
+
+    // 显示评分按钮
+    const ratingSection = document.querySelector('.rating-section');
+    if (ratingSection) {
+        ratingSection.classList.add('visible');
+    }
+}
+
+// 更新评分按钮显示next interval
+function updateRatingButtons(card) {
+    const buttonLabels = ['Again', 'Hard', 'Good', 'Easy'];
+    const buttons = document.querySelectorAll('.rating-btn');
+
+    buttons.forEach((btn) => {
+        const ease = parseInt(btn.dataset.ease);
+        const baseLabel = buttonLabels[ease - 1];
+
+        // nextReviews是一个数组，索引对应ease-1
+        if (card.nextReviews && card.nextReviews[ease - 1]) {
+            btn.textContent = `${baseLabel} (${card.nextReviews[ease - 1]})`;
+        } else {
+            btn.textContent = baseLabel;
+        }
+    });
 }
 
 // 调用后端AI接口获取反馈
@@ -705,6 +854,12 @@ async function getFeedback() {
 
         document.getElementById('studyFeedback').textContent = data.feedback;
 
+        // 显示评分按钮
+        const ratingSection = document.querySelector('.rating-section');
+        if (ratingSection) {
+            ratingSection.classList.add('visible');
+        }
+
     } catch (e) {
         console.error('getFeedback failed:', e);
         document.getElementById('studyFeedback').textContent =
@@ -716,6 +871,8 @@ async function getFeedback() {
 // 评分卡片并更新 Anki
 async function rateCard(ease) {
     try {
+        const currentCard = AppState.studyQueue[AppState.currentCardIndex];
+
         const response = await fetch('/api/anki/answer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -729,12 +886,80 @@ async function rateCard(ease) {
             return;
         }
 
-        // 评分成功，进入下一张卡片
-        nextCard();
+        // 根据学习模式决定是否移出队列
+        await handleCardAfterRating(currentCard, ease);
 
     } catch (err) {
         console.error('Failed to rate card:', err);
         alert('Failed to rate card');
+    }
+}
+
+// 评分后处理卡片
+async function handleCardAfterRating(card, ease) {
+    let shouldRemove = false;
+
+    if (AppState.queueMode === 'once') {
+        // 学习一次即移出
+        shouldRemove = true;
+    } else if (AppState.queueMode === 'keep') {
+        // 保留反复学习，不移出
+        shouldRemove = false;
+    } else if (AppState.queueMode === 'auto') {
+        // 自动模式：检查评分按钮对应的下次复习间隔
+        // nextReviews是字符串数组，如['<⁨10⁩ 分', '⁨11.2⁩ 个月', '⁨1.9⁩ 年', '⁨2.5⁩ 年']
+        // ease: 1=Again, 2=Hard, 3=Good, 4=Easy
+        if (card.nextReviews && card.nextReviews.length >= ease) {
+            const nextReview = card.nextReviews[ease - 1];
+
+            // 检查是否包含"天"、"个月"或"年"，这些表示大于1天
+            const isLongInterval = nextReview.includes('天') ||
+                                  nextReview.includes('个月') ||
+                                  nextReview.includes('年');
+
+            // 如果间隔大于1天，则移出队列
+            shouldRemove = isLongInterval;
+        } else {
+            // 如果没有nextReviews数据，检查queue状态
+            const isLearning = card.queue === 1;
+            const isNew = card.queue === 0;
+            shouldRemove = !isLearning && !isNew;
+        }
+    }
+
+    if (shouldRemove) {
+        // 从队列中移除卡片
+        await removeFromQueueById(card.id);
+        // 不增加索引，因为数组已经变短
+        if (AppState.currentCardIndex >= AppState.studyQueue.length) {
+            alert('You have completed all cards in the queue!');
+            showView('viewCardList');
+            return;
+        }
+        loadCurrentCard();
+    } else {
+        // 不移出，进入下一张
+        nextCard();
+    }
+}
+
+// 根据卡片ID从队列中移除
+async function removeFromQueueById(cardId) {
+    try {
+        const response = await fetch('/api/queue/remove-card', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cardId })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            // 从本地状态中移除
+            AppState.studyQueue = AppState.studyQueue.filter(c => c.id !== cardId);
+            await loadQueueCards();
+        }
+    } catch (err) {
+        console.error('Failed to remove card from queue:', err);
     }
 }
 
@@ -747,6 +972,128 @@ function nextCard() {
         return;
     }
     loadCurrentCard();
+}
+
+// 框选功能
+function initCardTableSelection() {
+    const cardTable = document.getElementById('cardTable');
+
+    cardTable.addEventListener('mousedown', (e) => {
+        // 如果点击的是checkbox，不启动框选
+        if (e.target.type === 'checkbox') return;
+
+        // 如果点击的是表头，不启动框选
+        if (e.target.tagName === 'TH' || e.target.closest('thead')) return;
+
+        AppState.isSelecting = true;
+        AppState.selectionStart = { x: e.clientX, y: e.clientY };
+
+        // 记录所有checkbox的初始状态
+        AppState.initialCheckboxStates.clear();
+        document.querySelectorAll('#cardTable tbody tr').forEach(tr => {
+            const checkbox = tr.querySelector('.card-select');
+            if (checkbox) {
+                AppState.initialCheckboxStates.set(tr, checkbox.checked);
+            }
+        });
+
+        // 创建框选框
+        AppState.selectionBox = document.createElement('div');
+        AppState.selectionBox.className = 'selection-box';
+        document.body.appendChild(AppState.selectionBox);
+
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!AppState.isSelecting) return;
+
+        const currentX = e.clientX;
+        const currentY = e.clientY;
+        const startX = AppState.selectionStart.x;
+        const startY = AppState.selectionStart.y;
+
+        // 更新框选框位置和大小
+        const left = Math.min(startX, currentX);
+        const top = Math.min(startY, currentY);
+        const width = Math.abs(currentX - startX);
+        const height = Math.abs(currentY - startY);
+
+        AppState.selectionBox.style.left = left + 'px';
+        AppState.selectionBox.style.top = top + 'px';
+        AppState.selectionBox.style.width = width + 'px';
+        AppState.selectionBox.style.height = height + 'px';
+
+        // 检测哪些行在框选范围内
+        updateSelectedRows(left, top, width, height);
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!AppState.isSelecting) return;
+
+        AppState.isSelecting = false;
+
+        // 移除框选框
+        if (AppState.selectionBox) {
+            AppState.selectionBox.remove();
+            AppState.selectionBox = null;
+        }
+
+        // 移除所有selecting类
+        document.querySelectorAll('#cardTable tbody tr.selecting').forEach(tr => {
+            tr.classList.remove('selecting');
+        });
+
+        // 清空初始状态记录
+        AppState.initialCheckboxStates.clear();
+    });
+}
+
+function updateSelectedRows(left, top, width, height) {
+    const rows = document.querySelectorAll('#cardTable tbody tr');
+
+    rows.forEach(tr => {
+        const rect = tr.getBoundingClientRect();
+
+        // 检测行是否与框选框相交
+        const isIntersecting = !(
+            rect.right < left ||
+            rect.left > left + width ||
+            rect.bottom < top ||
+            rect.top > top + height
+        );
+
+        const checkbox = tr.querySelector('.card-select');
+        const initialState = AppState.initialCheckboxStates.get(tr);
+
+        if (isIntersecting) {
+            // 在框选范围内，设置为选中
+            tr.classList.add('selecting');
+            if (checkbox) checkbox.checked = true;
+        } else {
+            // 不在框选范围内，恢复初始状态
+            tr.classList.remove('selecting');
+            if (checkbox && initialState !== undefined) {
+                checkbox.checked = initialState;
+            }
+        }
+    });
+}
+
+// 更新侧边栏展开按钮的显示内容
+function updateSidebarExpandBtn(currentView) {
+    const expandBtn = document.getElementById('sidebarExpandBtn');
+    if (!expandBtn) return;
+
+    if (currentView === 'viewStudy' && AppState.studyQueue.length > 0) {
+        // 学习模式下显示进度
+        expandBtn.classList.add('show-progress');
+        expandBtn.textContent = `${AppState.currentCardIndex + 1}/${AppState.studyQueue.length}`;
+    } else {
+        // 其他模式显示图标
+        expandBtn.classList.remove('show-progress');
+        expandBtn.textContent = '☰';
+    }
 }
 
 // 启动应用

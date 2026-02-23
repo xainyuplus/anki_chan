@@ -13,25 +13,38 @@
 --------------------------------*/
 #viewSettings .settings-table-wrapper {
     overflow-x: auto;
-    margin-top: 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    
+    margin-top: var(--spacing-lg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background-color: var(--color-bg-primary);
+    box-shadow: var(--shadow-sm);
 }
 
 /* 让 table 不压缩内容，支持横向滚动 */
 #viewSettings table {
-    width: max-content;   /* 关键 */
+    width: max-content;
     min-width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
 }
 
 /* 表头固定淡灰 */
 #viewSettings th {
-    background-color: #f0f0f0;
+    background-color: var(--color-bg-tertiary);
     position: sticky;
     top: 0;
     z-index: 2;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    font-size: var(--font-size-xs);
+    letter-spacing: 0.5px;
+    padding: var(--spacing-lg);
+}
+
+#viewSettings td {
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border-light);
 }
 
 /* -------------------------------
@@ -39,9 +52,22 @@
 --------------------------------*/
 #viewSettings input,
 #viewSettings select {
-    width: 180px; /* 不再挤压表格 */
-    padding: 6px;
+    width: 180px;
+    padding: var(--spacing-sm) var(--spacing-md);
     box-sizing: border-box;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    background-color: var(--color-bg-secondary);
+    transition: all var(--transition-base);
+}
+
+#viewSettings input:focus,
+#viewSettings select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    background-color: var(--color-bg-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 #viewSettings input.model-key-input,
@@ -60,48 +86,65 @@
 #viewSettings .model-name-input {
     width: 140px;
 }
-/* delete 按钮较窄 ，且居中*/
+
+/* delete 按钮较窄，且居中*/
 #viewSettings td:has(.delete-model-btn),
 #viewSettings td:has(.delete-role-btn) {
     text-align: center;
     width: 40px;
 }
 
-
-
 /* temperature 较窄 */
 #viewSettings .model-temp-input {
     width: 80px;
 }
+
 /* role 关联的 model 下拉框 */
 #viewSettings .role-model-select {
     width: 140px;
 }
+
 #viewSettings .role-user-input {
     width: 220px;
 }
-
 
 /* roles 的 prompt 文本区域占大空间 */
 #viewSettings textarea {
     width: 360px;
     min-height: 90px;
     max-height: 400px;
-    resize: vertical;      /* 允许用户拖动高度 */
-    overflow-y: auto;      /* 支持滚动，不撑爆布局 */
-    font-family: 微软雅黑, Arial, sans-serif;
-    font-size: 13px;
-    padding: 6px;
-    border: 1px solid #ccc;
-    background: #fafafa;
-    border-radius: 4px;
+    resize: vertical;
+    overflow-y: auto;
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-base);
+    line-height: 1.6;
+}
+
+#viewSettings textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    background-color: var(--color-bg-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 /* -------------------------------
    3. 表格 Hover 提升可读性
 --------------------------------*/
+#viewSettings tbody tr {
+    transition: background-color var(--transition-fast);
+}
+
 #viewSettings tbody tr:hover {
-    background-color: #f8f8f8;
+    background-color: var(--color-bg-secondary);
+}
+
+#viewSettings tbody tr:last-child td {
+    border-bottom: none;
 }
 
 /* -------------------------------
@@ -109,26 +152,41 @@
 --------------------------------*/
 #viewSettings .delete-model-btn,
 #viewSettings .delete-role-btn {
-    background-color: #ff6666;
+    background-color: var(--color-danger);
     color: white;
     border: none;
-    border-radius: 4px;
-    padding: 4px 8px;
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    transition: all var(--transition-base);
+    box-shadow: var(--shadow-sm);
 }
 
 #viewSettings .delete-model-btn:hover,
 #viewSettings .delete-role-btn:hover {
-    background-color: #e05555;
+    background-color: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
 }
 
 /* -------------------------------
    5. DefaultModel 下拉框美化
 --------------------------------*/
 #defaultModelSelect {
-    padding: 6px;
-    margin-left: 6px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-left: var(--spacing-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-secondary);
+    transition: all var(--transition-base);
+}
+
+#defaultModelSelect:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    background-color: var(--color-bg-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 /* ============================================
@@ -136,29 +194,65 @@
    ============================================ */
 
 #viewSettings *::-webkit-scrollbar {
-    width: 0px;      /* 竖直滚动条宽度 */
-    height: 6px;     /* 水平滚动条高度（表格横向滚动用） */
+    width: 6px;
+    height: 6px;
 }
 
 /* 滚动条底槽（背景轨道） */
 #viewSettings *::-webkit-scrollbar-track {
-    background: #f0f3f7;
-    border-radius: 8px;
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-sm);
 }
 
 /* 滚动条滑块（可拖动的部分） */
 #viewSettings *::-webkit-scrollbar-thumb {
-    background: #b7c4d8;  /* 柔和浅蓝灰 */
-    border-radius: 6px;
-    border: 2px solid #f0f3f7; /* 增加内边距，让滑块更细腻 */
+    background: var(--color-border);
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-base);
 }
 
 /* 滑块 hover 效果 */
 #viewSettings *::-webkit-scrollbar-thumb:hover {
-    background: #8ba3c9;
+    background: var(--color-text-tertiary);
 }
 
 /* 滑块 active（正在拖拽时） */
 #viewSettings *::-webkit-scrollbar-thumb:active {
-    background: #5d7daf;
+    background: var(--color-text-secondary);
+}
+
+/* -------------------------------
+   6. 按钮组美化
+--------------------------------*/
+#viewSettings button[type="button"] {
+    margin-bottom: var(--spacing-md);
+}
+
+#addModelBtn,
+#addRoleBtn,
+#saveSettingsBtn {
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    padding: var(--spacing-md) var(--spacing-xl);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    box-shadow: var(--shadow-sm);
+}
+
+#addModelBtn:hover,
+#addRoleBtn:hover,
+#saveSettingsBtn:hover {
+    background-color: var(--color-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+#saveSettingsBtn {
+    background-color: var(--color-success);
+    margin-top: var(--spacing-xl);
+}
+
+#saveSettingsBtn:hover {
+    background-color: #059669;
 }

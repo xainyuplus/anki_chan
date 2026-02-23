@@ -15,6 +15,16 @@ app.get("/", (req, res) => {
     res.sendFile(__dirname + "/public/main.html");
 });
 
+// 检查AnkiConnect连接状态
+app.get('/api/anki/status', async (req, res) => {
+    try {
+        const decks = await anki.getDecks();
+        res.json({ success: true, connected: true });
+    } catch (err) {
+        res.json({ success: false, connected: false, error: err.message });
+    }
+});
+
 
 app.post('/api/ai/generate-question', async (req, res) => {
     const { roleName = "teacherQuestion", cardFront, cardBack } = req.body;
@@ -212,7 +222,9 @@ app.get('/api/queue/cards', async (req, res) => {
             front: c.fields?.Front?.value || Object.values(c.fields)[0]?.value || "No front",
             back: c.fields?.Back?.value || Object.values(c.fields)[1]?.value || "No back",
             queue: c.queue,
-            due: c.due
+            due: c.due,
+            nextReviews: c.nextReviews,
+            interval: c.interval
         }));
 
         res.json({ success: true, cards: simplified });
